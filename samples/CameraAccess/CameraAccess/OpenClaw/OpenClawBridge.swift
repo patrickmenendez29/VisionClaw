@@ -4,24 +4,19 @@ import Foundation
 class OpenClawBridge: ObservableObject {
   @Published var lastToolCallStatus: ToolCallStatus = .idle
 
-  private let urlSession: URLSession
-  private let longRunSession: URLSession
+  private let session: URLSession
 
   init() {
     let config = URLSessionConfiguration.default
-    config.timeoutIntervalForRequest = 30
-    self.urlSession = URLSession(configuration: config)
-
-    let longConfig = URLSessionConfiguration.default
-    longConfig.timeoutIntervalForRequest = 120
-    self.longRunSession = URLSession(configuration: longConfig)
+    config.timeoutIntervalForRequest = 120
+    self.session = URLSession(configuration: config)
   }
 
-  // MARK: - Agent Chat (synchronous, waits for OpenClaw agent response)
+  // MARK: - Agent Chat (session continuity via x-openclaw-session-key header)
 
   func delegateTask(
     task: String,
-    toolName: String = "delegate_task"
+    toolName: String = "execute"
   ) async -> ToolResult {
     lastToolCallStatus = .executing(toolName)
 
@@ -34,6 +29,7 @@ class OpenClawBridge: ObservableObject {
     request.httpMethod = "POST"
     request.setValue("Bearer \(GeminiConfig.openClawGatewayToken)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("glass:default", forHTTPHeaderField: "x-openclaw-session-key")
 
     let body: [String: Any] = [
       "model": "openclaw",
@@ -45,7 +41,7 @@ class OpenClawBridge: ObservableObject {
 
     do {
       request.httpBody = try JSONSerialization.data(withJSONObject: body)
-      let (data, response) = try await longRunSession.data(for: request)
+      let (data, response) = try await session.data(for: request)
       let httpResponse = response as? HTTPURLResponse
 
       guard let statusCode = httpResponse?.statusCode, (200...299).contains(statusCode) else {
@@ -74,66 +70,6 @@ class OpenClawBridge: ObservableObject {
       NSLog("[OpenClaw] Agent error: %@", error.localizedDescription)
       lastToolCallStatus = .failed(toolName, error.localizedDescription)
       return .failure("Agent error: \(error.localizedDescription)")
-    }
-  }
-
-  // MARK: - Tool Invoke (synchronous, for web_search)
-
-  func invokeTool(
-    tool: String,
-    action: String = "json",
-    args: [String: Any]
-  ) async -> ToolResult {
-    lastToolCallStatus = .executing(tool)
-
-    guard let url = URL(string: "\(GeminiConfig.openClawHost):\(GeminiConfig.openClawPort)/tools/invoke") else {
-      lastToolCallStatus = .failed(tool, "Invalid URL")
-      return .failure("Invalid gateway URL")
-    }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.setValue("Bearer \(GeminiConfig.openClawGatewayToken)", forHTTPHeaderField: "Authorization")
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    let body: [String: Any] = [
-      "tool": tool,
-      "action": action,
-      "args": args,
-      "sessionKey": "glass:default"
-    ]
-
-    do {
-      request.httpBody = try JSONSerialization.data(withJSONObject: body)
-      let (data, response) = try await urlSession.data(for: request)
-      let httpResponse = response as? HTTPURLResponse
-
-      guard let statusCode = httpResponse?.statusCode, (200...299).contains(statusCode) else {
-        let code = httpResponse?.statusCode ?? 0
-        NSLog("[OpenClaw] Tool invoke failed: HTTP %d", code)
-        lastToolCallStatus = .failed(tool, "HTTP \(code)")
-        return .failure("Tool invoke failed: HTTP \(code)")
-      }
-
-      if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-        if let error = json["error"] as? String {
-          lastToolCallStatus = .failed(tool, error)
-          return .failure(error)
-        }
-        let resultObj = json["result"] ?? json
-        let resultData = try JSONSerialization.data(withJSONObject: resultObj, options: [.sortedKeys])
-        let resultStr = String(data: resultData, encoding: .utf8) ?? "OK"
-        NSLog("[OpenClaw] Tool %@ result: %@", tool, String(resultStr.prefix(200)))
-        lastToolCallStatus = .completed(tool)
-        return .success(resultStr)
-      }
-
-      lastToolCallStatus = .completed(tool)
-      return .success(String(data: data, encoding: .utf8) ?? "OK")
-    } catch {
-      NSLog("[OpenClaw] Tool invoke error: %@", error.localizedDescription)
-      lastToolCallStatus = .failed(tool, error.localizedDescription)
-      return .failure("Tool invoke failed: \(error.localizedDescription)")
     }
   }
 }
