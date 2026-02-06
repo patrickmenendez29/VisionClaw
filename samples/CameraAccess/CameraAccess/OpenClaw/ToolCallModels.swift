@@ -101,6 +101,6 @@ enum ToolDeclarations {
       ],
       "required": ["task"]
     ] as [String: Any],
-    "behavior": "NON_BLOCKING"
+    "behavior": "BLOCKING"
   ]
 }
