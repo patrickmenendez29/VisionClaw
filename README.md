@@ -1,8 +1,10 @@
 # VisionClaw 🦞+😎
 
-![VisionClaw](assets/cover.png)
+![VisionClaw](assets/taaser.png)
 
 A real-time AI assistant for Meta Ray-Ban smart glasses. See what you see, hear what you say, and take actions on your behalf -- all through voice.
+
+![Cover](assets/cover.png)
 
 Built on [Meta Wearables DAT SDK](https://github.com/facebook/meta-wearables-dat-ios) + [Gemini Live API](https://ai.google.dev/gemini-api/docs/live) + [OpenClaw](https://github.com/nichochar/openclaw) (optional).
 
