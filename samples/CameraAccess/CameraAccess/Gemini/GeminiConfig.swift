@@ -40,22 +40,13 @@ enum GeminiConfig {
     For messages, confirm recipient and content before delegating unless clearly urgent.
     """
 
-  // ---------------------------------------------------------------
-  // REQUIRED: Add your own Gemini API key here.
-  // Get one at https://aistudio.google.com/apikey
-  // ---------------------------------------------------------------
-  static let apiKey = "YOUR_GEMINI_API_KEY"
-
-  // ---------------------------------------------------------------
-  // OPTIONAL: OpenClaw gateway config (for agentic tool-calling).
-  // Only needed if you want Gemini to perform actions (web search,
-  // send messages, delegate tasks) via an OpenClaw gateway on your Mac.
-  // See README.md for setup instructions.
-  // ---------------------------------------------------------------
-  static let openClawHost = "http://YOUR_MAC_HOSTNAME.local"
-  static let openClawPort = 18789
-  static let openClawHookToken = "YOUR_OPENCLAW_HOOK_TOKEN"
-  static let openClawGatewayToken = "YOUR_OPENCLAW_GATEWAY_TOKEN"
+  // Secrets are stored in Secrets.swift (gitignored).
+  // Copy Secrets.example.swift -> Secrets.swift and fill in your values.
+  static let apiKey = Secrets.geminiAPIKey
+  static let openClawHost = Secrets.openClawHost
+  static let openClawPort = Secrets.openClawPort
+  static let openClawHookToken = Secrets.openClawHookToken
+  static let openClawGatewayToken = Secrets.openClawGatewayToken
 
   static func websocketURL() -> URL? {
     guard apiKey != "YOUR_GEMINI_API_KEY" && !apiKey.isEmpty else { return nil }
